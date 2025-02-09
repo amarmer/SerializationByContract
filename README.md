@@ -2,12 +2,11 @@
 
 In any project, when a function is created for serialization, another function is also created for unserialization. 
 
-Here is described another approach - first is created a contract with a name and declaration of data structures that needs to be serialized/unserialized.
-For instance:
+Here is described another approach - first is created a contract with a name and declaration of data structures that needs to be serialized and unserialized.
+For instance contract `XYZ`:
 ```C++
 SERIALIZATION_CONTRACT(XYZ)(std::vector<std::tuple<int, std::string>> par1, std::wstring par2);
 ```
-Name of the contract is `XYZ`.<br/><br/>
 Then in order to serialize these data in `std::vector<uint8_t> bytes`:
 
 ```C++
@@ -26,7 +25,7 @@ UNSERIALIZE(XYZ)(bytes)(out1, out2);
 [SerializationContract.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContract.h) contains implementation of SERIALIZATION_CONTRACT, SERIALIZE, UNSERIALIZE macros.<br/>
 [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h) contains implementation for serialization, unserialization for most STL data structures.<br/>
 
-Serialization/unserialization of a custom struct `Data` can be implemented like:
+Serialization, unserialization of a custom struct `Data` can be implemented like:
 ```C++
 struct Data {
     std::wstring _str;
@@ -45,7 +44,7 @@ namespace SerializationContract {
 ```
 Then `Data` can be used like any other STL data structure that is implemented in [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h)
 
-Example of a contract `XYZ` and its serialization and unserialization is in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp).<br/>
+Example of a contract `XYZ` and its serialization and unserialization is in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
 
 Framework can be tested on [https://wandbox.org/permlink/C5mXEEAsVHgf6mnt](https://wandbox.org/permlink/C5mXEEAsVHgf6mnt)
 
