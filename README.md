@@ -2,7 +2,8 @@
 
 In any project, when a function is created for serialization, another function is created for unserialization. 
 
-Here is described another approach - first is creating a contract with a name and declaration of data structures that need to be serialized and unserialized.
+Serialization by contrast uses another approach - a contract with name and data structures is declared, and then serialization and unserialization of the data are automatic.  
+
 For instance contract `XYZ`:
 ```C++
 SERIALIZATION_CONTRACT(XYZ)(std::vector<std::tuple<int, std::string>> par1, std::wstring par2);
