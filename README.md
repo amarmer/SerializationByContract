@@ -29,18 +29,18 @@ XYZ(out1, out2) << bytes;
 Serialization, and unserialization of a custom struct `Data` can be implemented like:
 ```C++
 struct Data {
-    std::wstring _str;
+  std::wstring _str;
 };
 
 // 'Data' serialization and unserialization.
 namespace SerializationContract {
-    Serializer& operator << (Serializer& serializer, const Data& data) {
-        return serializer << data._str;
-    }
+  Serializer& operator << (Serializer& serializer, const Data& data) {
+    return serializer << data._str;
+  }
 
-    Unserializer& operator >> (Unserializer& unserializer, Data& data) {
-        return unserializer >> data._str;
-    }
+  Unserializer& operator >> (Unserializer& unserializer, Data& data) {
+    return unserializer >> data._str;
+  }
 }
 ```
 Then `Data` can be used like any other STL data structure that is implemented in [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h)
