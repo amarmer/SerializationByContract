@@ -1,78 +1,74 @@
-// Implementation of SERIALIZATION_CONTRACT, SERIALIZE, UNSERIALIZE macros.
+// Implementation of 'SERIALIZATION_CONTRACT'
 
 #pragma once 
 
 #include "SerializationContractData.h"
 
 namespace SerializationContract {
-    // SerializeProxy
-    template <typename> struct SerializeProxy;
+  template <typename T> 
+  struct Processor: public Processor<decltype(&T::operator())>{};
 
-    template <typename ...Params>
-    struct SerializeProxy<void (*)(Params...)> {
-        struct SerializeProcessor {
-            static auto Instance(std::vector<uint8_t>& bytes) {
-                return SerializeProcessor(bytes);
-            }
+  template <typename ClassType, typename... Params>
+  struct Processor<void(ClassType::*)(Params...) const> {
+    template <typename IsConstParams, typename ...Ts>
+    auto CreateTupleWithParamsProxy(Ts&&... ts) {
+      auto tuple = std::tuple<Ts&...>(std::forward<Ts&>(ts)...);
+      return TupleWithParamsProxy<IsConstParams, decltype(tuple)>{std::move(tuple)};
+    }
+      
+    // Used only for serialization.
+    auto operator ()(const Params&... params) {
+      return CreateTupleWithParamsProxy<std::true_type>(std::forward<const Params&>(params)...);
+    }
+      
+    // Used for serialization and unserialization.
+    auto operator ()(Params&... params) {
+      return CreateTupleWithParamsProxy<std::false_type>(std::forward<Params&>(params)...);
+    }
 
-            void operator()(const Params&... params) {
-                Serializer serializer(bytes_);
+    template <typename IsConstParams, typename TupleWithParams>
+    struct TupleWithParamsProxy {
+      static constexpr auto LastIndex = std::tuple_size_v<TupleWithParams> - 1;
+        
+      // Serialization        
+      void operator >> (std::vector<uint8_t>& bytes) {
+        Serializer serializer(bytes);
+        SerializeParams<0>(serializer);
+      }
 
-                Serialize<Params...>(serializer, params...);
-            }
+      template<int Index>
+      void SerializeParams(Serializer& serializer) {
+        serializer << std::get<Index>(tupleWithParams_);
 
-        private:
-            SerializeProcessor(std::vector<uint8_t>& bytes) : bytes_(bytes) {}
+        if constexpr (Index < LastIndex) {
+          SerializeParams<Index + 1>(serializer);
+        }
+      }
 
-            template <typename T, typename ...Ts>
-            static void Serialize(Serializer& serializer, const T& t, const Ts&... ts) {
-                serializer << t;
+      // Unserialization
+      void operator << (const std::vector<uint8_t>& bytes) {
+        static_assert(std::is_same_v<IsConstParams, std::false_type>, "Cannot unserialize to const");
+          
+        Unserializer unserializer(bytes);
+        UnserializeParams<0>(unserializer);
+      }
 
-                if constexpr (sizeof...(ts)) {
-                    Serialize<Ts...>(serializer, ts...);
-                }
-            }
+      template<int Index>
+      void UnserializeParams(Unserializer& unserializer) {
+        unserializer >> std::get<Index>(tupleWithParams_);
 
-            std::vector<uint8_t>& bytes_;
-        };
+        if constexpr (Index < LastIndex) {
+          UnserializeParams<Index + 1>(unserializer);
+        }
+      }
+
+      TupleWithParams tupleWithParams_;
     };
-
-    // UnserializeProxy
-    template <typename> struct UnserializeProxy;
-
-    template <typename ...Params>
-    struct UnserializeProxy<void (*)(Params...)> {
-        struct UnserializeProcessor
-        {
-            static auto Instance(const std::vector<uint8_t>& bytes) {
-                return UnserializeProcessor(bytes);
-            }
-
-            void operator()(Params&... params) {
-                Unserializer unserializer(bytes_);
-
-                Unserialize<Params...>(unserializer, params...);
-            }
-
-        private:
-            UnserializeProcessor(const std::vector<uint8_t>& bytes) : bytes_(bytes) {}
-
-            template <typename T, typename ...Ts>
-            static void Unserialize(Unserializer& unserializer, T& t, Ts&... ts) {
-                unserializer >> t;
-
-                if constexpr (sizeof...(ts)) {
-                    Unserialize<Ts...>(unserializer, ts...);
-                }
-            }
-
-            const std::vector<uint8_t>& bytes_;
-        };
-    };
-
+  };
 }
-
-#define SERIALIZATION_CONTRACT(x) void SerializationContract##x
-
-#define SERIALIZE(x) SerializationContract::SerializeProxy<decltype(&SerializationContract##x)>::SerializeProcessor::Instance
-#define UNSERIALIZE(x) SerializationContract::UnserializeProxy<decltype(&SerializationContract##x)>::UnserializeProcessor::Instance
+    
+#define SERIALIZATION_CONTRACT(x, ...)                                                                       \
+  static auto x = [](auto&&... params) {                                                                     \
+    auto lambda = [](__VA_ARGS__) {};                                                                        \
+    return SerializationContract::Processor<decltype(lambda)>()(std::forward<decltype(params)>(params)...);  \
+  };
