@@ -2,24 +2,24 @@
 
 In any project, when a function is created for serialization, another function is created for unserialization. 
 
-Serialization by contrast uses another approach - a contract with name and data structures is declared, and then serialization and unserialization of the data are automatic.  
+Serialization by contract uses another approach - a contract with name and data structures is declared, and then serialization and unserialization of the data are automatic.  
 
 For instance contract `XYZ`:
 ```C++
-SERIALIZATION_CONTRACT(XYZ)(std::vector<std::tuple<int, std::string>> par1, std::wstring par2);
+SERIALIZATION_CONTRACT(XYZ, std::vector<std::tuple<int, std::string>>, std::wstring);
 ```
 Then to serialize these data in `std::vector<uint8_t> bytes`:
 
 ```C++
 std::vector<uint8_t> bytes;
-SERIALIZE(XYZ)(bytes)({{10, "ABC1"}, {11, "ABC2"}}, L"ABC3");
+XYZ({{10, "ABC1"}, {11, "ABC2"}}, L"ABC3") >> bytes;
 ```
 
 And to unserialize from `std::vector<uint8_t> bytes`:
 ```C++
 std::vector<std::tuple<int, std::string>> out1;
 std::wstring out2;
-UNSERIALIZE(XYZ)(bytes)(out1, out2);
+XYZ(out1, out2) << bytes;
 ```
 
 #### Framework
@@ -47,7 +47,7 @@ Then `Data` can be used like any other STL data structure that is implemented in
 
 An example of a contract `XYZ` and its serialization and unserialization is in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
 
-The framework can be tested on [https://wandbox.org/permlink/C5mXEEAsVHgf6mnt](https://wandbox.org/permlink/C5mXEEAsVHgf6mnt)
+The framework can be tested on [[https://wandbox.org/permlink/C5mXEEAsVHgf6mnt](https://wandbox.org/permlink/aub8aG1ywtQiAtVR)]
 
 
  
