@@ -23,7 +23,7 @@ XYZ(out1, out2) << bytes;
 ```
 
 #### Framework
-[SerializationContract.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContract.h) contains implementation of SERIALIZATION_CONTRACT, SERIALIZE, UNSERIALIZE macros.<br/>
+[SerializationContract.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContract.h) contains implementation of SERIALIZATION_CONTRACT macro.<br/>
 [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h) contains implementation for serialization, and unserialization for most STL data structures.<br/>
 
 Serialization, and unserialization of a custom struct `Data` can be implemented like:
