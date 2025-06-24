@@ -47,7 +47,7 @@ Then `Data` can be used like any other STL data structure that is implemented in
 
 An example of a contract `XYZ` and its serialization and unserialization is in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
 
-The framework can be tested on [[(https://wandbox.org/permlink/aub8aG1ywtQiAtVR)](https://wandbox.org/permlink/aub8aG1ywtQiAtVR)]
+The framework can be tested on [https://wandbox.org/permlink/aub8aG1ywtQiAtVR](https://wandbox.org/permlink/aub8aG1ywtQiAtVR)
 
 
  
