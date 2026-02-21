@@ -2,9 +2,9 @@
 
 In any project, when a function is created for serialization, another function is created for unserialization. 
 
-Serialization by contract uses another approach - a contract with name and data structures is declared, and then serialization and unserialization of the data are automatic.  
+Serialization by contract employs a different approach: a contract with a name and data structures is declared, and then serialization and deserialization of the data are automated.  
 
-For instance contract `XYZ`:
+For instance, contract `XYZ`:
 ```C++
 SERIALIZATION_CONTRACT(XYZ, std::vector<std::tuple<int, std::string>>, std::wstring);
 ```
@@ -45,9 +45,28 @@ namespace SerializationContract {
 ```
 Then `Data` can be used like any other STL data structure that is implemented in [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h)
 
-An example of a contract `XYZ` and its serialization and unserialization is in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
+#### IPC
 
-The framework can be tested on [https://wandbox.org/permlink/DAcRSkRIuSTREAgi](https://wandbox.org/permlink/DAcRSkRIuSTREAgi)
+The serialization framework can be used in IPC to serialize and unserialize data by contract.
+
+If only one type of data is sent from a client to a server, then the approach described above can be used.<br/>
+If different types are sent, then on the server, the types need to be unserialized correspondingly.<br/><br/>
+On server, to subscribe to the contract: `ON_SERIALIZATION_CONTRACT`.<br/>
+To unserialize `bytes` to the corresponding contract:  `PROCESS_SERIALIZATION_CONTRACT(byes)`. 
+
+For instance, for the `XYZ` contract above:
+```
+ON_SERIALIZATION_CONTRACT(XYZ)[&](const std::vector<std::tuple<int, std::string>>& par1, const std::wstring& par2)
+{
+};
+```
+
+When `bytes` are received on the server, `PROCESS_SERIALIZATION_CONTRACT(bytes)` should be called,<br/>
+and the unserialized data will be dispatched to one of the callbacks `ON_SERIALIZATION_CONTRACT`.
+
+The examples of serialization and unserialization are in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
+
+The framework can be tested on [https://wandbox.org/permlink/s9uWjs37WfZIEVUl](https://wandbox.org/permlink/s9uWjs37WfZIEVUl)
 
 
  
