@@ -19,6 +19,9 @@
 #include <sstream> 
 #include <cstring>
 #include <cstdint>
+#include <optional>
+#include <variant>
+#include <functional>
 
 namespace SerializationContract {
   using bytes_t = std::vector<uint8_t>;
@@ -28,62 +31,55 @@ namespace SerializationContract {
 
     template <typename T>
     void Serialize(const T& t) {
-      std::copy((char*)&t, (char*)&t + sizeof(T), back_inserter(bytes_));
+      const uint8_t* dataPtr = reinterpret_cast<const uint8_t*>(&t);
+      bytes_.insert(bytes_.end(), dataPtr, dataPtr + sizeof(T));
     }
 
     template <typename T>
-    Serializer& SequenceContainer(const T& arg) {
-      Serializer& serializer = *this;
+    Serializer& SequenceContainer(const T& t) {
+      *this << t.size();
 
-      serializer << arg.size();
-
-      for (const auto& el : arg) {
-        serializer << el;
+      for (const auto& el : t) {
+        *this << el;
       }
 
-      return serializer;
+      return *this;
     }
 
     template <typename T>
-    Serializer& Set(const T& arg) {
-      Serializer& serializer = *this;
+    Serializer& Set(const T& t) {
+      *this << t.size();
 
-      serializer << arg.size();
-
-      for (const auto& el : arg) {
-        serializer << el;
+      for (const auto& el : t) {
+        *this << el;
       }
 
-      return serializer;
+      return *this;
     }
 
     template<typename TKey, typename TValue>
-    Serializer& Map(const std::map<TKey, TValue>& arg) {
-      Serializer& serializer = *this;
+    Serializer& Map(const std::map<TKey, TValue>& t) {
+      *this << t.size();
 
-      serializer << arg.size();
-
-      for (auto& el : arg) {
-        serializer << el.first << el.second;
+      for (auto& el : t) {
+        *this << el.first << el.second;
       }
 
-      return serializer;
+      return *this;
     }
 
     template<typename T>
-    Serializer& ContainerAdapter(const T& arg) {
-      Serializer& serializer = *this;
+    Serializer& ContainerAdapter(const T& t) {
+      auto tmp = t;
 
-      auto tmp = arg;
-
-      serializer << arg.size();
+      *this << t.size();
 
       while (!tmp.empty()) {
-        serializer << tmp.top();
+        *this << tmp.top();
         tmp.pop();
       }
 
-      return serializer;
+      return *this;
     }
 
     const bytes_t& Bytes() const {
@@ -105,87 +101,77 @@ namespace SerializationContract {
     }
 
     template <typename T>
-    Unserializer& SequenceContainer(T& arg) {
-      Unserializer& unserializer = *this;
-
-      arg.clear();
+    Unserializer& SequenceContainer(T& t) {
+      t.clear();
 
       size_t size;
-      unserializer.Unserialize(size);
+      Unserialize(size);
 
       for (size_t i = 0; i < size; i++) {
         typename T::value_type el;
 
-        unserializer >> el;
+        *this >> el;
 
-        arg.push_back(el);
+        t.push_back(el);
       }
 
-      return unserializer;
+      return *this;
     }
 
     template <typename T>
-    Unserializer& Set(T& arg) {
-      Unserializer& unserializer = *this;
-
-      arg.clear();
+    Unserializer& Set(T& t) {
+      t.clear();
 
       size_t size;
-      unserializer.Unserialize(size);
-
-      using type = std::decay_t<decltype(*arg.begin())>;
+      Unserialize(size);
 
       for (size_t i = 0; i < size; i++) {
-        type el;
-        unserializer >> el;
+        typename T::value_type el;
 
-        arg.insert(el);
+        *this >> el;
+
+        t.insert(el);
       }
 
-      return unserializer;
+      return *this;
     }
 
     template<typename TKey, typename TValue>
-    Unserializer& Map(std::map<TKey, TValue>& arg) {
-      Unserializer& unserializer = *this;
-
-      arg.clear();
+    Unserializer& Map(std::map<TKey, TValue>& t) {
+      t.clear();
 
       size_t size;
-      unserializer.Unserialize(size);
+      Unserialize(size);
 
       for (size_t i = 0; i < size; i++) {
         TKey key;
-        unserializer >> key;
+        *this >> key;
 
         TValue value;
         *this >> value;
 
-        arg.insert(std::make_pair(key, value));
+        t.insert(std::make_pair(key, value));
       }
 
-      return unserializer;
+      return *this;
     }
 
     template<typename T>
-    Unserializer& ContainerAdapter(T& arg) {
-      Unserializer& unserializer = *this;
-
-      arg = {};
+    Unserializer& ContainerAdapter(T& t) {
+      t = {};
 
       size_t size;
-      unserializer.Unserialize(size);
-
-      using type = std::decay_t<decltype(arg.top())>;
+      Unserialize(size);
 
       for (size_t i = 0; i < size; i++) {
-        type el;
-        unserializer >> el;
+        typename T::value_type el;
 
-        arg.push(el);
+        *this >> el;
+
+        t.push(el);
       }
 
-      return unserializer;
+      return *this;
     }
 
   private:
@@ -195,23 +181,23 @@ namespace SerializationContract {
 
   // Built-in types
   template <typename T>
-  Serializer& operator << (Serializer& serializer, const T& arg) {
-    static_assert(!std::is_pointer_v<T>, "Cannot serialize pointer");
+  Serializer& operator << (Serializer& serializer, const T& t) {
+    static_assert(!std::is_pointer_v<T>, "Cannot serialize raw pointers.");
 
-    static_assert(!std::is_class_v<T>, "Unserializable class");
+    static_assert(!std::is_class_v<T>, "The class doesn't implement 'Serializer& operator <<'.");
 
-    serializer.Serialize(arg);
+    serializer.Serialize(t);
 
     return serializer;
   }
 
   template <typename T>
-  Unserializer& operator >> (Unserializer& unserializer, T& arg) {
-    static_assert(!std::is_pointer_v<T>, "Cannot unserialize pointer");
+  Unserializer& operator >> (Unserializer& unserializer, T& t) {
+    static_assert(!std::is_pointer_v<T>, "Cannot unserialize into a raw pointer.");
 
-    static_assert(!std::is_class_v<T>, "Unserializable class");
+    static_assert(!std::is_class_v<T>, "The class doesn't implement 'Unserializer& operator >>'.");
 
-    unserializer.Unserialize(arg);
+    unserializer.Unserialize(t);
 
     return unserializer;
   }
@@ -236,52 +222,52 @@ namespace SerializationContract {
 
   // vector
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::vector<T>& arg) {
-    return serializer.SequenceContainer(arg);
+  Serializer& operator << (Serializer& serializer, const std::vector<T>& t) {
+    return serializer.SequenceContainer(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::vector<T>& arg) {
-    return unserializer.SequenceContainer(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::vector<T>& t) {
+    return unserializer.SequenceContainer(t);
   }
 
   // list
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::list<T>& l) {
-    return serializer.SequenceContainer(l);
+  Serializer& operator << (Serializer& serializer, const std::list<T>& t) {
+    return serializer.SequenceContainer(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::list<T>& arg) {
-    return unserializer.SequenceContainer(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::list<T>& t) {
+    return unserializer.SequenceContainer(t);
   }
 
   // deque
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::deque<T>& arg) {
-    return serializer.SequenceContainer(arg);
+  Serializer& operator << (Serializer& serializer, const std::deque<T>& t) {
+    return serializer.SequenceContainer(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::deque<T>& arg) {
-    return unserializer.SequenceContainer(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::deque<T>& t) {
+    return unserializer.SequenceContainer(t);
   }
 
   // forward_list
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::forward_list<T>& arg) {
-    return serializer.SequenceContainer(arg);
+  Serializer& operator << (Serializer& serializer, const std::forward_list<T>& t) {
+    return serializer.SequenceContainer(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::forward_list<T>& arg) {
-    return unserializer.SequenceContainer(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::forward_list<T>& t) {
+    return unserializer.SequenceContainer(t);
   }
 
   // array
   template<typename T, int N>
-  Serializer& operator << (Serializer& serializer, const std::array<T, N>& arg) {
-    for (const auto& el : arg) {
+  Serializer& operator << (Serializer& serializer, const std::array<T, N>& t) {
+    for (const auto& el : t) {
       serializer << el;
     }
 
@@ -289,12 +275,12 @@ namespace SerializationContract {
   }
 
   template<typename T, int N>
-  Unserializer& operator >> (Unserializer& unserializer, std::array<T, N>& arg) {
-    for (size_t i = 0; i < arg.size(); i++) {
+  Unserializer& operator >> (Unserializer& unserializer, std::array<T, N>& t) {
+    for (size_t i = 0; i < t.size(); i++) {
       T el;
       unserializer >> el;
 
-      arg[i] = el;
+      t[i] = el;
     }
 
     return unserializer;
@@ -302,98 +288,98 @@ namespace SerializationContract {
 
   // set
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::set<T>& arg) {
-    return serializer.Set(arg);
+  Serializer& operator << (Serializer& serializer, const std::set<T>& t) {
+    return serializer.Set(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::set<T>& arg) {
-    return unserializer.Set(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::set<T>& t) {
+    return unserializer.Set(t);
   }
 
   // unordered_set
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::unordered_set<T>& arg) {
-    return serializer.Set(arg);
+  Serializer& operator << (Serializer& serializer, const std::unordered_set<T>& t) {
+    return serializer.Set(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::unordered_set<T>& arg) {
-    return unserializer.Set(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::unordered_set<T>& t) {
+    return unserializer.Set(t);
   }
 
   // multiset
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::multiset<T>& arg) {
-    return serializer.Set(arg);
+  Serializer& operator << (Serializer& serializer, const std::multiset<T>& t) {
+    return serializer.Set(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::multiset<T>& arg) {
-    return unserializer.Set(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::multiset<T>& t) {
+    return unserializer.Set(t);
   }
 
   // map
   template<typename TKey, typename TValue>
-  Serializer& operator << (Serializer& serializer, const std::map<TKey, TValue>& arg) {
-    return serializer.Map(arg);
+  Serializer& operator << (Serializer& serializer, const std::map<TKey, TValue>& t) {
+    return serializer.Map(t);
   }
 
   template<typename TKey, typename TValue>
-  Unserializer& operator >> (Unserializer& unserializer, std::map<TKey, TValue>& arg) {
-    return unserializer.Map(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::map<TKey, TValue>& t) {
+    return unserializer.Map(t);
   }
 
   // unordered_map
   template<typename TKey, typename TValue>
-  Serializer& operator << (Serializer& serializer, const std::unordered_map<TKey, TValue>& arg) {
-    return serializer.Map(arg);
+  Serializer& operator << (Serializer& serializer, const std::unordered_map<TKey, TValue>& t) {
+    return serializer.Map(t);
   }
 
   template<typename TKey, typename TValue>
-  Unserializer& operator >> (Unserializer& unserializer, std::unordered_map<TKey, TValue>& arg) {
-    return unserializer.Map(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::unordered_map<TKey, TValue>& t) {
+    return unserializer.Map(t);
   }
 
   // multimap
   template<typename TKey, typename TValue>
-  Serializer& operator << (Serializer& serializer, const std::multimap<TKey, TValue>& arg) {
-    return serializer.Map(arg);
+  Serializer& operator << (Serializer& serializer, const std::multimap<TKey, TValue>& t) {
+    return serializer.Map(t);
   }
 
   template<typename TKey, typename TValue>
-  Unserializer& operator >> (Unserializer& unserializer, std::multimap<TKey, TValue>& arg) {
-    return unserializer.Map(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::multimap<TKey, TValue>& t) {
+    return unserializer.Map(t);
   }
 
   // unordered_multimap
   template<typename TKey, typename TValue>
-  Serializer& operator << (Serializer& serializer, const std::unordered_multimap<TKey, TValue>& arg) {
-    return serializer.Map(arg);
+  Serializer& operator << (Serializer& serializer, const std::unordered_multimap<TKey, TValue>& t) {
+    return serializer.Map(t);
   }
 
   template<typename TKey, typename TValue>
-  Unserializer& operator >> (Unserializer& unserializer, std::unordered_multimap<TKey, TValue>& arg) {
-    return unserializer.Map(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::unordered_multimap<TKey, TValue>& t) {
+    return unserializer.Map(t);
   }
 
   // stack
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::stack<T>& arg) {
-    return serializer.ContainerAdapter(arg);
+  Serializer& operator << (Serializer& serializer, const std::stack<T>& t) {
+    return serializer.ContainerAdapter(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::stack<T>& arg) {
-    return unserializer.ContainerAdapter(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::stack<T>& t) {
+    return unserializer.ContainerAdapter(t);
   }
 
   // queue
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::queue<T>& arg) {
-    auto tmp = arg;
+  Serializer& operator << (Serializer& serializer, const std::queue<T>& t) {
+    auto tmp = t;
 
-    serializer << arg.size();
+    serializer << t.size();
 
     while (!tmp.empty()) {
       serializer << tmp.front();
@@ -404,19 +390,17 @@ namespace SerializationContract {
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::queue<T>& arg) {
-    arg = {};
+  Unserializer& operator >> (Unserializer& unserializer, std::queue<T>& t) {
+    t = {};
 
     size_t size;
     unserializer.Unserialize(size);
 
-    using type = std::decay_t<decltype(arg.front())>;
-
     for (size_t i = 0; i < size; i++) {
-      type el;
+      T el;
       unserializer >> el;
 
-      arg.push(el);
+      t.push(el);
     }
 
     return unserializer;
@@ -424,59 +408,130 @@ namespace SerializationContract {
 
   // priority_queue
   template<typename T>
-  Serializer& operator << (Serializer& serializer, const std::priority_queue<T>& arg) {
-    return serializer.ContainerAdapter(arg);
+  Serializer& operator << (Serializer& serializer, const std::priority_queue<T>& t) {
+    return serializer.ContainerAdapter(t);
   }
 
   template<typename T>
-  Unserializer& operator >> (Unserializer& unserializer, std::priority_queue<T>& arg) {
-    return unserializer.ContainerAdapter(arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::priority_queue<T>& t) {
+    return unserializer.ContainerAdapter(t);
   }
 
   // tuple
   template<int n>
   struct Tuple {
     template <typename ...Ts>
-    static void Serialize(Serializer& serializer, const std::tuple<Ts...>& arg) {
+    static void Serialize(Serializer& serializer, const std::tuple<Ts...>& t) {
       if constexpr (n > 1) {
-        Tuple<n - 1>::Serialize(serializer, arg);
+        Tuple<n - 1>::Serialize(serializer, t);
       }
 
-      serializer << std::get<n - 1>(arg);
+      serializer << std::get<n - 1>(t);
     }
 
     template <typename ...Ts>
-    static void Unserialize(Unserializer& unserializer, std::tuple<Ts...>& arg) {
+    static void Unserialize(Unserializer& unserializer, std::tuple<Ts...>& t) {
       if constexpr (n > 1) {
-        Tuple<n - 1>::Unserialize(unserializer, arg);
+        Tuple<n - 1>::Unserialize(unserializer, t);
       }
 
-      unserializer >> std::get<n - 1>(arg);
+      unserializer >> std::get<n - 1>(t);
     }
   };
 
   template<typename ...Ts>
-  Serializer& operator << (Serializer& serializer, const std::tuple<Ts...>& arg) {
-    Tuple<sizeof...(Ts)>::Serialize(serializer, arg);
+  Serializer& operator << (Serializer& serializer, const std::tuple<Ts...>& t) {
+    Tuple<sizeof...(Ts)>::Serialize(serializer, t);
 
     return serializer;
   }
 
   template<typename ...Ts>
-  Unserializer& operator >> (Unserializer& unserializer, std::tuple<Ts...>& arg) {
-    Tuple<sizeof...(Ts)>::Unserialize(unserializer, arg);
+  Unserializer& operator >> (Unserializer& unserializer, std::tuple<Ts...>& t) {
+    Tuple<sizeof...(Ts)>::Unserialize(unserializer, t);
 
     return unserializer;
   }
 
   // pair
   template<typename T1, typename T2>
-  Serializer& operator << (Serializer& serializer, const std::pair<T1, T2>& arg) {
-    return serializer << arg.first << arg.second;
+  Serializer& operator << (Serializer& serializer, const std::pair<T1, T2>& t) {
+    return serializer << t.first << t.second;
   }
 
   template<typename T1, typename T2>
-  Unserializer& operator >> (Unserializer& unserializer, std::pair<T1, T2>& arg) {
-    return unserializer >> arg.first >> arg.second;
+  Unserializer& operator >> (Unserializer& unserializer, std::pair<T1, T2>& t) {
+    return unserializer >> t.first >> t.second;
+  }
+
+  // optional
+  template<typename T>
+  Serializer& operator << (Serializer& serializer, const std::optional<T>& t) {
+    if (t.has_value()) {
+      serializer << true;
+      serializer << t.value();
+    } else {
+      serializer << false;
+    }
+
+    return serializer;
+  }
+
+  template<typename T>
+  Unserializer& operator >> (Unserializer& unserializer, std::optional<T>& t) {
+    bool hasValue;
+
+    unserializer >> hasValue;
+
+    if (hasValue) {
+      T tmp;
+      unserializer >> tmp;
+
+      t = std::make_optional(tmp);
+    } else {
+      t = std::nullopt;
+    }
+
+    return unserializer;
+  }
+
+  // variant
+  template<typename... Ts>
+  Serializer& operator << (Serializer& serializer, const std::variant<Ts...>& t) {
+    serializer << t.index();
+
+    std::visit(
+      [&](const auto& t) {
+        serializer << t;
+      }, 
+      t);
+
+    return serializer;
+  }
+
+  template <size_t I = 0, typename... Ts>
+  void UnserializeVariant(Unserializer& unserializer, std::variant<Ts...>& t, size_t index) {
+    if constexpr (I < sizeof...(Ts)) {
+      if (I == index) {
+        std::variant_alternative_t<I, std::variant<Ts...>> val;
+        unserializer >> val;
+
+        t.template emplace<I>(std::move(val));
+
+        return;
+      }
+
+      UnserializeVariant<I + 1>(unserializer, t, index);
+    }
+  }
+
+  template<typename... Ts>
+  Unserializer& operator >> (Unserializer& unserializer, std::variant<Ts...>& t) {
+    size_t index;
+    unserializer >> index;
+
+    UnserializeVariant(unserializer, t, index);
+
+    return unserializer;
   }
 }
