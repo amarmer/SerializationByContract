@@ -30,9 +30,16 @@ If different types are sent, then on the server, the types need to be unserializ
 On server, to subscribe to the contract: `ON_SERIALIZATION_CONTRACT`.<br/>
 To unserialize `bytes` to the corresponding contract:  `PROCESS_SERIALIZATION_CONTRACT(byes)`. 
 
-For instance, for the `XYZ` contract above:
+For instance:
 ```
-ON_SERIALIZATION_CONTRACT(XYZ)[&](const std::vector<std::tuple<int, std::string>>& par1, const std::wstring& par2)
+SERIALIZATION_CONTRACT(ABC, std::variant<int, float, std::variant<int, std::string>>);
+SERIALIZATION_CONTRACT(QAZ, std::string, int>);
+
+ON_SERIALIZATION_CONTRACT(ABC)[&](const std::variant<int, float, std::variant<int, std::string>>& par)
+{
+};
+
+ON_SERIALIZATION_CONTRACT(QAZ)[&](const std::string& par1, in par2)
 {
 };
 ```
@@ -44,26 +51,7 @@ and the unserialized data will be dispatched to one of the callbacks `ON_SERIALI
 [SerializationContract.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContract.h) contains implementation of SERIALIZATION_CONTRACT macro.<br/>
 [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h) contains implementation for serialization, and unserialization for most STL data structures.<br/>
 
-Serialization, and unserialization of a custom struct `Data` can be implemented like:
-```C++
-struct Data {
-  std::wstring _str;
-};
-
-// 'Data' serialization and unserialization.
-namespace SerializationContract {
-  Serializer& operator << (Serializer& serializer, const Data& data) {
-    return serializer << data._str;
-  }
-
-  Unserializer& operator >> (Unserializer& unserializer, Data& data) {
-    return unserializer >> data._str;
-  }
-}
-```
-Then `Data` can be used like any other STL data structure that is implemented in [SerializationContractData.h](https://github.com/amarmer/SerializationByContract/blob/main/SerializationContractData.h)
-
-The examples of serialization and unserialization are in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp)<br/>
+Serialization and unserialization of a custom struct `Data` can be implemented as shown in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp).
 
 The framework can be tested on [https://wandbox.org/permlink/s9uWjs37WfZIEVUl](https://wandbox.org/permlink/s9uWjs37WfZIEVUl)
 
