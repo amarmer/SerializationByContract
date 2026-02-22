@@ -32,10 +32,10 @@ To unserialize `bytes` to the corresponding contract:  `PROCESS_SERIALIZATION_CO
 
 For instance:
 ```
-SERIALIZATION_CONTRACT(ABC, std::variant<int, float, std::variant<int, std::string>>);
+SERIALIZATION_CONTRACT(ABC, std::variant<float, std::variant<int, std::string>>);
 SERIALIZATION_CONTRACT(QAZ, std::string, int>);
 
-ON_SERIALIZATION_CONTRACT(ABC)[&](const std::variant<int, float, std::variant<int, std::string>>& par)
+ON_SERIALIZATION_CONTRACT(ABC)[&](const std::variant<float, std::variant<int, std::string>>& par)
 {
 };
 
