@@ -39,7 +39,7 @@ ON_SERIALIZATION_CONTRACT(ABC)[&](const std::variant<float, std::variant<int, st
 {
 };
 
-ON_SERIALIZATION_CONTRACT(QAZ)[&](const std::string& par1, in par2)
+ON_SERIALIZATION_CONTRACT(QAZ)[&](const std::string& par1, int par2)
 {
 };
 ```
