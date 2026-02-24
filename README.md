@@ -28,7 +28,6 @@ The serialization framework can be used in IPC to serialize and unserialize data
 If only one type of data is sent from a client to a server, then the approach described above can be used.<br/>
 If different types are sent, then on the server, the types need to be unserialized correspondingly.<br/><br/>
 On server, to subscribe to the contract: `ON_SERIALIZATION_CONTRACT`.<br/>
-To unserialize `bytes` to the corresponding contract:  `PROCESS_SERIALIZATION_CONTRACT(bytes)`. 
 
 For instance:
 ```
