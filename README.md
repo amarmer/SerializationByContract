@@ -52,7 +52,7 @@ and the unserialized data will be dispatched to one of the callbacks `ON_SERIALI
 
 Serialization and unserialization of a custom struct `Data` can be implemented as shown in [main.cpp](https://github.com/amarmer/SerializationByContract/blob/main/Main.cpp).
 
-The framework can be tested on [https://wandbox.org/permlink/permlink/qwwRQN65iK89QUYc](https://wandbox.org/permlink/permlink/qwwRQN65iK89QUYc)
+The framework can be tested on [https://wandbox.org/permlink/qwwRQN65iK89QUYc](https://wandbox.org/permlink/qwwRQN65iK89QUYc)
 
 
  
