@@ -112,7 +112,7 @@ namespace SerializationContract {
 
         *this >> el;
 
-        t.push_back(el);
+        t.push_back(std::move(el));
       }
 
       return *this;
@@ -130,7 +130,7 @@ namespace SerializationContract {
 
         *this >> el;
 
-        t.insert(el);
+        t.insert(std::move(el));
       }
 
       return *this;
@@ -150,7 +150,7 @@ namespace SerializationContract {
         TValue value;
         *this >> value;
 
-        t.insert(std::make_pair(key, value));
+        t.insert(std::make_pair(std::move(key), std::move(value)));
       }
 
       return *this;
@@ -168,7 +168,7 @@ namespace SerializationContract {
 
         *this >> el;
 
-        t.push(el);
+        t.push(std::move(el));
       }
 
       return *this;
@@ -280,7 +280,7 @@ namespace SerializationContract {
       T el;
       unserializer >> el;
 
-      t[i] = el;
+      t[i] = std::move(el);
     }
 
     return unserializer;
@@ -400,7 +400,7 @@ namespace SerializationContract {
       T el;
       unserializer >> el;
 
-      t.push(el);
+      t.push(std::move(el));
     }
 
     return unserializer;
@@ -487,7 +487,7 @@ namespace SerializationContract {
       T tmp;
       unserializer >> tmp;
 
-      t = std::make_optional(tmp);
+      t = std::make_optional(std::move(tmp));
     } else {
       t = std::nullopt;
     }
@@ -531,6 +531,37 @@ namespace SerializationContract {
     unserializer >> index;
 
     UnserializeVariant(unserializer, t, index);
+
+    return unserializer;
+  }
+
+  // shared_ptr
+  template<typename T>
+  Serializer& operator << (Serializer& serializer, const std::shared_ptr<T>& t) {
+    if (t == nullptr) {
+      serializer << false;
+    } else {
+      serializer << true;
+      serializer << *t;
+    }
+
+    return serializer;
+  }
+
+  template<typename T>
+  Unserializer& operator >> (Unserializer& unserializer, std::shared_ptr<T>& t) {
+    bool isNotNull;
+    unserializer >> isNotNull;
+
+    if (isNotNull) {
+      T tmp;
+
+      unserializer >> tmp;
+
+      t = std::make_shared<T>(std::move(tmp));
+    } else {
+      t = nullptr;
+    }
 
     return unserializer;
   }
