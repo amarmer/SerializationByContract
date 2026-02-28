@@ -1,3 +1,5 @@
+// https://wandbox.org/permlink/s9uWjs37WfZIEVUl
+
 #include <iostream>
 #include <cassert>
 #include "SerializationContract.h"
@@ -28,23 +30,38 @@ SERIALIZATION_CONTRACT(ABC, std::variant<int, float, std::variant<int, std::stri
 
 SERIALIZATION_CONTRACT(QAZ, std::optional<std::vector<std::string>>, std::optional<std::string>);
 
+SERIALIZATION_CONTRACT(ZXC, std::shared_ptr<std::string>);
+
 int main(int, char**) {
   std::vector<uint8_t> bytes;
 
   //
-  // Example of serializing and unserializing data.
+  // Examples of serializing and unserializing data.
   //
 
+  // Test ZXC
+  auto zxcIn = std::make_shared<std::string>("QAZ");
+  ZXC(zxcIn) >> bytes;
+
+  decltype(zxcIn) zxcOut;
+  ZXC(zxcOut) << bytes;
+
+  // Compare In and Out of 'ZXC' contract data.
+  assert(zxcOut && (*zxcOut == *zxcIn));
+
+
+  // Test QAZ
   std::optional<std::vector<std::string>> qazIn1({ "QAZ" });
   std::optional<std::string> qazIn2 = std::nullopt;
   QAZ(qazIn1, qazIn2) >> bytes;
 
-  std::optional<std::vector<std::string>> qazOut1;
-  std::optional<std::string> qazOut2;
+  decltype(qazIn1) qazOut1;
+  decltype(qazIn2) qazOut2;
   QAZ(qazOut1, qazOut2) << bytes;
 
-  // Compare In and Out 'QAZ' data.
+  // Compare In and Out of 'QAZ' contract data.
   assert(qazOut1 == qazIn1 && qazOut2 == qazIn2);
+
 
   //
   // Example of serializing data on client, after receiving 'bytes' on server, 
