@@ -1,5 +1,3 @@
-// https://wandbox.org/permlink/s9uWjs37WfZIEVUl
-
 #include <iostream>
 #include <cassert>
 #include "SerializationContract.h"
