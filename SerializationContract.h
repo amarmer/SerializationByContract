@@ -112,8 +112,7 @@ namespace SerializationContract {
 
           if constexpr (0 == sizeof...(Ts)) {
             f(args..., (const T&)arg);
-          }
-          else {
+          } else {
             ArgsCollector<Ts...>::template CollectArgs<>(f, unserializer, args..., arg);
           }
         }
